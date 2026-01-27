@@ -1,0 +1,1 @@
+Salt is created only when password is first is hashed after that same salt is used.
