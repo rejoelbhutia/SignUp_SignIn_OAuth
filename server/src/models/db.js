@@ -4,7 +4,7 @@ import dotenv from "dotenv";
 dotenv.config();
 
 const pool = mysql.createPool({
-    host : "localhost",
+    host : "mysql_db",
     user : "root",
     password : process.env.MYSQL_PASSWORD,
     database : "OAuth_demo",
@@ -14,3 +14,4 @@ const pool = mysql.createPool({
 }).promise();
 
 export default pool;
+
