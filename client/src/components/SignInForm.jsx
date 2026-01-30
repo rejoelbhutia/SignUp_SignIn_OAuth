@@ -21,15 +21,37 @@ const SignInForm = ({ onInputChange, onSubmit }) => {
         }
     };
 
-    const handleSubmit = (e) => {
+    const [loading, setLoading] = useState(false);
+
+    const handleSignIn = async (e) => {
         e.preventDefault();
-        if (onSubmit) {
-            onSubmit(formData);
+        setLoading(true);
+        try {
+            const response = await fetch('http://localhost:5000/api/auth/signIn', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    email: formData.email,
+                    password: formData.password
+                }),
+            });
+            const data = await response.json();
+            if (data.success) {
+                alert('Login Successful!');
+                if (onSubmit) onSubmit(data); // Pass user data/token parent
+            } else {
+                alert(data.message || 'Login failed');
+            }
+        } catch (error) {
+            console.error(error);
+            alert('Error signing in');
+        } finally {
+            setLoading(false);
         }
     };
 
     return (
-        <form onSubmit={handleSubmit} className="space-y-6 animate-[slideIn_0.5s_ease]">
+        <form onSubmit={handleSignIn} className="space-y-6 animate-[slideIn_0.5s_ease]">
             <h2 className="text-3xl font-bold text-slate-100 mb-8">Sign in to your account</h2>
 
             {/* Email Input */}
@@ -100,9 +122,10 @@ const SignInForm = ({ onInputChange, onSubmit }) => {
             {/* Submit Button */}
             <button
                 type="submit"
-                className="w-full py-2.5 sm:py-3 px-6 gradient-primary text-white font-semibold rounded-lg shadow-lg shadow-purple-500/30 hover:shadow-purple-500/50 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 flex items-center justify-center gap-2 group text-sm sm:text-base"
+                disabled={loading}
+                className="w-full py-2.5 sm:py-3 px-6 gradient-primary text-white font-semibold rounded-lg shadow-lg shadow-purple-500/30 hover:shadow-purple-500/50 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 flex items-center justify-center gap-2 group text-sm sm:text-base disabled:opacity-50"
             >
-                <span>Sign In</span>
+                <span>{loading ? 'Signing In...' : 'Sign In'}</span>
                 <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </button>
 

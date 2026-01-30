@@ -1,32 +1,30 @@
 import User from "../models/user.model.js";
 import { comparePassword, hashPassword } from "../utils/passwordUtils.js";
 import { generateToken } from "../utils/generateToken.js";
+import { OTPModel } from "../models/otp.model.js";
+
 
 export const signUp = async (req, res) => {
   try {
-    const { name, email, password } = req.body;
+    const { name, email, password, otp } = req.body;
 
-    if (!name || !email || !password) {
+    // 1. Validate all fields
+    if (!name || !email || !password || !otp) {
+      return res.status(400).json({ success: false, message: "All fields are required" });
+    }
+
+    // 2. Verify OTP (The Gatekeeper)
+    const validOtp = await OTPModel.verify(email, otp, 'signup');
+
+    if (!validOtp) {
       return res.status(400).json({
         success: false,
-        message: "All fields are required",
+        message: "Invalid or expired OTP",
       });
     }
 
-    const existingUser = await User.findByEmail(email);
-
-    if (existingUser) {
-      console.log("User already exist: ", existingUser);
-
-      return res.status(409).json({
-        success: false,
-        message: "User already exist with this email! Login please",
-      });
-    }
-
+    // 3. OTP is valid! NOW we create the user
     const hashedPassword = await hashPassword(password);
-    console.log("Hashed Password: ", hashedPassword);
-    
 
     const userData = {
       name,
@@ -34,23 +32,24 @@ export const signUp = async (req, res) => {
       password: hashedPassword,
     };
 
-    const newUser = await User.create(userData);
+    const newUser = await User.create(userData); // This is your MySQL User.create
 
+    // 4. Clean up: Delete the used OTP
+    await OTPModel.deleteByEmail(email);
+
+    // 5. Generate Token & Login
     const token = await generateToken(newUser.id, newUser.email);
-    console.log("Token: ", token);
 
-    return res.status(200).json({
+    return res.status(201).json({
       success: true,
-      message: "User created successfully",
+      message: "Account verified and created successfully",
       user: newUser,
       token,
     });
+
   } catch (error) {
-    console.error("Error: ", error);
-    return res.status(500).json({
-      success: false,
-      message: "Internal Server Error",
-    });
+    console.error("Error in signUp: ", error);
+    return res.status(500).json({ success: false, message: "Internal Server Error" });
   }
 };
 
@@ -66,8 +65,8 @@ export const signIn = async (req, res) => {
     }
 
     const user = await User.findByEmail(email);
-    console.log("User: ",user);
-    
+    console.log("User: ", user);
+
 
     if (!user) {
       return res.status(401).json({
@@ -76,7 +75,7 @@ export const signIn = async (req, res) => {
       });
     }
     console.log("Password: ", user.password);
-    
+
     const isValidPassword = await comparePassword(password, user.password);
     if (!isValidPassword) {
       return res.status(401).json({

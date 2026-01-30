@@ -1,5 +1,5 @@
 // models/User.js
-import db from "./db.js";
+import db from "../config/db.js";
 
 const User = {
   // 1. Find by Email

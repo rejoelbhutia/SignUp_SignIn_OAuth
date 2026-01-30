@@ -4,6 +4,9 @@ import { Mail, Lock, User, Eye, EyeOff, ArrowRight } from 'lucide-react';
 const SignUpForm = ({ onInputChange, onSubmit }) => {
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+    const [otpSent, setOtpSent] = useState(false);
+    const [loading, setLoading] = useState(false);
+    const [otp, setOtp] = useState('');
     const [formData, setFormData] = useState({
         name: '',
         email: '',
@@ -24,19 +27,112 @@ const SignUpForm = ({ onInputChange, onSubmit }) => {
         }
     };
 
-    const handleSubmit = (e) => {
+    const handleSendOtp = async (e) => {
         e.preventDefault();
+        if (!formData.email || !formData.name || !formData.password) {
+            alert('Please fill in all fields before sending OTP');
+            return;
+        }
         if (formData.password !== formData.confirmPassword) {
             alert('Passwords do not match!');
             return;
         }
-        if (onSubmit) {
-            onSubmit(formData);
+
+        setLoading(true);
+        try {
+            const response = await fetch('http://localhost:5000/api/auth/send-otp', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: formData.email }),
+            });
+            const data = await response.json();
+            if (data.success) {
+                setOtpSent(true);
+                alert('OTP sent to your email!');
+            } else {
+                alert(data.message || 'Failed to send OTP');
+            }
+        } catch (error) {
+            console.error(error);
+            alert('Error sending OTP');
+        } finally {
+            setLoading(false);
         }
     };
 
+    const handleSignUp = async (e) => {
+        e.preventDefault();
+        setLoading(true);
+        try {
+            const response = await fetch('http://localhost:5000/api/auth/signUp', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    name: formData.name,
+                    email: formData.email,
+                    password: formData.password,
+                    otp: otp
+                }),
+            });
+            const data = await response.json();
+            if (data.success) {
+                alert('Account created successfully!');
+                if (onSubmit) onSubmit(data);
+                // Maybe redirect or reset
+            } else {
+                alert(data.message || 'Signup failed');
+            }
+        } catch (error) {
+            console.error(error);
+            alert('Error signing up');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    if (otpSent) {
+        return (
+            <form onSubmit={handleSignUp} className="space-y-6 animate-[slideIn_0.5s_ease]">
+                <h2 className="text-3xl font-bold text-slate-100 mb-8">Verify OTP</h2>
+                <p className="text-slate-300 mb-4">An OTP has been sent to {formData.email}</p>
+
+                <div className="space-y-2">
+                    <label htmlFor="otp" className="block text-sm font-medium text-slate-300">
+                        Enter OTP
+                    </label>
+                    <input
+                        type="text"
+                        id="otp"
+                        value={otp}
+                        onChange={(e) => setOtp(e.target.value)}
+                        placeholder="123456"
+                        required
+                        className="w-full px-4 py-3 bg-white border-2 border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:border-purple-500 focus:ring-4 focus:ring-purple-500/10 transition-all duration-300"
+                    />
+                </div>
+
+                <div className="flex gap-4">
+                    <button
+                        type="button"
+                        onClick={() => setOtpSent(false)}
+                        className="flex-1 py-3 px-6 bg-slate-700 text-white font-semibold rounded-lg hover:bg-slate-600 transition-all"
+                    >
+                        Back
+                    </button>
+                    <button
+                        type="submit"
+                        disabled={loading}
+                        className="flex-1 py-3 px-6 gradient-primary text-white font-semibold rounded-lg shadow-lg hover:shadow-purple-500/50 transition-all disabled:opacity-50"
+                    >
+                        {loading ? 'Verifying...' : 'Verify & Sign Up'}
+                    </button>
+                </div>
+            </form>
+        );
+    }
+
     return (
-        <form onSubmit={handleSubmit} className="space-y-6 animate-[slideIn_0.5s_ease]">
+        <form onSubmit={handleSendOtp} className="space-y-6 animate-[slideIn_0.5s_ease]">
             <h2 className="text-3xl font-bold text-slate-100 mb-8">Create your account</h2>
 
             {/* Name Input */}
@@ -157,9 +253,10 @@ const SignUpForm = ({ onInputChange, onSubmit }) => {
             {/* Submit Button */}
             <button
                 type="submit"
-                className="w-full py-2.5 sm:py-3 px-6 gradient-primary text-white font-semibold rounded-lg shadow-lg shadow-purple-500/30 hover:shadow-purple-500/50 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 flex items-center justify-center gap-2 group text-sm sm:text-base"
+                disabled={loading}
+                className="w-full py-2.5 sm:py-3 px-6 gradient-primary text-white font-semibold rounded-lg shadow-lg shadow-purple-500/30 hover:shadow-purple-500/50 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 flex items-center justify-center gap-2 group text-sm sm:text-base disabled:opacity-50"
             >
-                <span>Create Account</span>
+                <span>{loading ? 'Sending OTP...' : 'Send OTP'}</span>
                 <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </button>
 
