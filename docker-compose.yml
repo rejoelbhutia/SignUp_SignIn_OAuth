@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   mysql_db:
     image: mysql:8.0
@@ -11,15 +9,28 @@ services:
       - "3306:3306"
     volumes:
       - db_data:/var/lib/mysql
+      - ./db_init/init.sql:/docker-entrypoint-initdb.d/init.sql
     networks:
       - app_network
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      # Fix: Added password flag to ensure ping works
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_PASSWORD:-root}"]
       interval: 10s
       timeout: 5s
       retries: 5
 
+  # NEW: Added Redis Service
+  redis_db:
+    image: redis:alpine
+    container_name: redis_db_container
+    ports:
+      - "6379:6379"
+    networks:
+      - app_network
+
   server:
+    env_file:
+      - ./server/.env
     build: ./server
     container_name: server_container
     ports:
@@ -27,10 +38,13 @@ services:
     environment:
       MYSQL_PASSWORD: ${MYSQL_PASSWORD:-root}
       DB_HOST: mysql_db
+      REDIS_HOST: redis_db   # Added so your Node app knows where Redis is
       PORT: 5000
     depends_on:
       mysql_db:
         condition: service_healthy
+      redis_db:              # Added dependency
+        condition: service_started
     networks:
       - app_network
 

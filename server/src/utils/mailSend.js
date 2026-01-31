@@ -6,7 +6,7 @@ dotenv.config();
 export const mailSender =async  (email, title, body) => {
     try {
     let transporter = nodemailer.createTransport({
-      host: "gmail",   // e.g., smtp.gmail.com
+      host: "smtp.gmail.com",   // e.g., smtp.gmail.com
       auth: {
         user: process.env.MAIL_USER, 
         pass: process.env.MAIL_PASS, 
